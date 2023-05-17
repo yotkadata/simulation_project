@@ -39,7 +39,7 @@ class SupermarketMap:
         tiles: a numpy array containing all the tile images
         """
         self.tiles = tiles
-        # split the floor string into a two dimensional matrix
+        # Split the floor string into a two dimensional matrix
         self.contents = [list(row) for row in floor.split("\n")]
         self.ncols = len(self.contents[0])
         self.nrows = len(self.contents)
@@ -49,13 +49,21 @@ class SupermarketMap:
         self.prepare_map()
 
     def extract_tile(self, row, col):
-        """extract a tile array from the tiles image"""
-        y = row * TILE_SIZE
-        x = col * TILE_SIZE
-        return self.tiles[y : y + TILE_SIZE, x : x + TILE_SIZE]
+        """
+        Extract a tile array from the tiles image.
+        """
+        row1 = row * TILE_SIZE
+        row2 = row1 + TILE_SIZE
+
+        col1 = col * TILE_SIZE
+        col2 = col1 + TILE_SIZE
+
+        return self.tiles[row1:row2, col1:col2]
 
     def get_tile(self, char):
-        """returns the array for a given tile character"""
+        """
+        Return the array for a given tile character.
+        """
         if char == "#":  # Wall
             return self.extract_tile(0, 0)
         elif char == "E":  # Entrance
@@ -74,8 +82,9 @@ class SupermarketMap:
             return self.extract_tile(1, 2)
 
     def prepare_map(self):
-        """prepares the entire image as a big numpy array"""
-
+        """
+        Prepare the entire image as a big numpy array.
+        """
         # Get all unique characters in floor plan
         chars = "".join(set(FLOOR)).replace("\n", "")
 
@@ -87,19 +96,29 @@ class SupermarketMap:
                 # Save all possible positions of letters in a dict
                 self.positions[char].append((row, col))
 
+                # Get tile for current position
                 bm = self.get_tile(char)
-                y = row * TILE_SIZE
-                x = col * TILE_SIZE
-                self.image[y : y + TILE_SIZE, x : x + TILE_SIZE] = bm
+
+                # Calculate window size and position to insert tile
+                row1 = row * TILE_SIZE
+                row2 = row1 + TILE_SIZE
+
+                col1 = col * TILE_SIZE
+                col2 = col1 + TILE_SIZE
+
+                # Add tile to image
+                self.image[row1:row2, col1:col2] = bm
 
     def draw(self, frame):
         """
-        draws the image into a frame
+        Draw the image into a frame.
         """
         frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
 
     def write_image(self, filename):
-        """writes the image into a file"""
+        """
+        Writes the image into a file.
+        """
         cv2.imwrite(filename, self.image)
 
 
@@ -117,6 +136,8 @@ class Customer:
         self.avatar = self.extract_tile(7, 0)
         self.section = "C"
 
+        time.sleep(1)
+
     def __repr__(self) -> str:
         return f"Customer object"
 
@@ -127,12 +148,18 @@ class Customer:
         if section == None:
             section = self.section
 
+        # Get all possible positions in the section
         choices = self.supermarket.positions[section]
+
+        # Randomly choose one and return it
         i = np.random.choice(len(choices))
 
         return choices[i]
 
     def draw(self, frame):
+        """
+        Add the customer image to the frame.
+        """
         row1 = self.row * TILE_SIZE
         row2 = row1 + self.avatar.shape[0]
 
@@ -157,37 +184,36 @@ class Customer:
         """
         Move a customer in the store.
         """
-        # Randomly choose from all possible positions for next move
-        # choices = self.supermarket.positions[self.section]
-        # choice = np.random.choice(len(choices))
-
-        # Set new position
-        # if choices[choice][0] < self.supermarket.nrows:
-        #    self.row = choices[choice][0]
-
-        # if choices[choice][1] < self.supermarket.ncols:
-        #    self.col = choices[choice][1]
-
         self.row, self.col = self.get_rand_position()
-
-        time.sleep(1)
 
 
 if __name__ == "__main__":
-    background = np.zeros((640, 640, 3), np.uint8)
     tiles = cv2.imread("tiles.png")
 
+    # Instantiate Supermarket object
     market = SupermarketMap(FLOOR, tiles)
-    customer = Customer(market, tiles)  # TODO: Error at 20
+
+    # Instantiate customer object
+    customer = Customer(market, tiles)
+
+    # Create background of the same size as the supermarket
+    background = np.zeros(market.image.shape, np.uint8)
 
     while True:
+        # Create a new frame
         frame = background.copy()
 
+        # Look for key actions
         key = cv2.waitKey(1)
 
+        # Draw the Supermarket
         market.draw(frame)
+
+        # Draw the customer
         customer.draw(frame)
         time.sleep(1)
+
+        # Move the customer
         customer.move()
 
         if key == 113:  # 'q' key
