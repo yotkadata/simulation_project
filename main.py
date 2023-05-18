@@ -3,6 +3,7 @@ import time
 import cv2
 import numpy as np
 import pandas as pd
+import py_avataaars as pa
 from faker import Faker
 
 TILE_SIZE = 32
@@ -300,18 +301,22 @@ class Customer:
     in a MCMC simulation.
     """
 
-    def __init__(self, id, name, supermarket, tiles, section="entrance"):
+    def __init__(self, id, name, supermarket, tiles=None, section="entrance"):
         """
         supermarket: A SuperMarketMap object
         avatar : a numpy array containing a 32x32 tile image
         """
+        if isinstance(tiles, np.ndarray):
+            tiles = supermarket.tiles
+
         self.id = id
         self.name = name
         self.supermarket = supermarket
         self.row, self.col = self.get_rand_position("entrance")
         self.tiles = tiles
-        self.avatar = self.extract_tile(7, 0)
+        # self.avatar = self.extract_tile(7, 0)
         self.section = section
+        self.avatar = self.generate_avatar()
 
     def __repr__(self) -> str:
         return f"<Customer {self.name}, currently in section '{self.section}'>"
@@ -341,7 +346,7 @@ class Customer:
         col1 = self.col * TILE_SIZE
         col2 = col1 + self.avatar.shape[1]
 
-        frame[row1:row2, col1:col2] = self.avatar
+        frame[row1:row2, col1:col2] = self.avatar[:, :, :3]
 
     def extract_tile(self, row, col):
         """
@@ -354,6 +359,30 @@ class Customer:
         col2 = col1 + TILE_SIZE
 
         return self.tiles[row1:row2, col1:col2]
+
+    def generate_avatar(self):
+        avatar = pa.PyAvataaar(
+            skin_color=np.random.choice(list(pa.SkinColor)),
+            hair_color=np.random.choice(list(pa.HairColor)),
+            facial_hair_type=np.random.choice(list(pa.FacialHairType)),
+            facial_hair_color=np.random.choice(list(pa.HairColor)),
+            top_type=np.random.choice(list(pa.TopType)),
+            hat_color=np.random.choice(list(pa.Color)),
+            mouth_type=np.random.choice(list(pa.MouthType)),
+            eye_type=np.random.choice(list(pa.EyesType)),
+            eyebrow_type=np.random.choice(list(pa.EyebrowType)),
+            nose_type=np.random.choice(list(pa.NoseType)),
+            clothe_type=np.random.choice(list(pa.ClotheType)),
+            clothe_color=np.random.choice(list(pa.Color)),
+            clothe_graphic_type=np.random.choice(list(pa.ClotheGraphicType)),
+            background_color=np.random.choice(list(pa.Color)),
+        )
+
+        image_bytes = avatar.render_png()
+        image_array = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+        image_array = cv2.resize(image_array, (32, 32))
+
+        return image_array
 
     def next_section(self, tprobs=None):
         """
