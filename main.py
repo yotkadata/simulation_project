@@ -67,6 +67,7 @@ class Supermarket:
         self.last_id = 0
         self.current_time = self.entry_times.loc[0, "timestamp"]
         self.register = None
+        self.positions_taken = []
 
     def extract_tile(self, row, col):
         """
@@ -80,26 +81,26 @@ class Supermarket:
 
         return self.tiles[row1:row2, col1:col2]
 
-    def get_tile(self, char):
+    def get_tile(self, character):
         """
         Return the array for a given tile character.
         """
-        if char == "#":  # Wall
-            return self.extract_tile(0, 0)
-        elif char == "E":  # Entrance
-            return self.extract_tile(0, 1)
-        elif char == "F":  # Fruits
-            return self.extract_tile(0, 2)
-        elif char == "S":  # Spices
-            return self.extract_tile(0, 3)
-        elif char == "D":  # Dairy
-            return self.extract_tile(0, 4)
-        elif char == "B":  # Drinks
-            return self.extract_tile(1, 0)
-        elif char == "C":  # Checkout
-            return self.extract_tile(1, 1)
-        else:
-            return self.extract_tile(1, 2)
+
+        tile_pos = {
+            "#": (0, 0),
+            "E": (0, 1),
+            "F": (0, 2),
+            "S": (0, 3),
+            "D": (0, 4),
+            "B": (1, 0),
+            "C": (1, 1),
+            "others": (1, 2),
+        }
+
+        if character not in tile_pos:
+            character = "others"
+
+        return self.extract_tile(tile_pos[character][0], tile_pos[character][1])
 
     def prepare_image(self):
         """
@@ -156,13 +157,6 @@ class Supermarket:
         Draw the image into a frame.
         """
         frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
-
-    def draw_customers(self, customers, frame):
-        """
-        Draw all customers in their current position.
-        """
-        for _ in customers:
-            frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
 
     def load_tprobs(self):
         """
@@ -297,6 +291,9 @@ class Supermarket:
                 if not c.is_active():
                     self.remove_customer(c)
 
+            # Reset taken positions
+            self.positions_taken = []
+
             print(
                 f"Currently there are {len(self.customers)} customers in the store.\n"
             )
@@ -353,10 +350,14 @@ class Customer:
         # Get all possible positions in the section
         choices = self.supermarket.positions[section]
 
-        # Randomly choose one and return it
-        i = np.random.choice(len(choices))
+        while True:
+            # Randomly choose one position
+            i = np.random.choice(len(choices))
 
-        return choices[i]
+            # Make sure the position is not taken by another customer
+            if choices[i] not in self.supermarket.positions_taken:
+                self.supermarket.positions_taken.append(choices[i])
+                return choices[i]
 
     def draw(self, frame):
         """
@@ -383,6 +384,9 @@ class Customer:
         return self.tiles[row1:row2, col1:col2]
 
     def generate_avatar(self):
+        """
+        Generate a random avatar.
+        """
         avatar = pa.PyAvataaar(
             skin_color=np.random.choice(list(pa.SkinColor)),
             hair_color=np.random.choice(list(pa.HairColor)),
@@ -435,7 +439,10 @@ class Customer:
         return self.section != "checkout"
 
 
-def main():
+def main() -> None:
+    """
+    Main function.
+    """
     # Instantiate a supermarket object
     netto = Supermarket("Netto")
 
