@@ -9,26 +9,36 @@ from faker import Faker
 TILE_SIZE = 32
 
 FLOOR = """
-####################
-####################
-#BBBBDDDDDSSSSSFFFF#
-#BBBBDDDDDSSSSSFFFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-#BBB##DDD##SSS##FFF#
-BBBBBDDDDDSSSSEEEEEE
-BBBBBDDDDDSSSSEEEEEE
-##CC##CC##CC##EEEEEE
-##CC##CC##CC##EEEEEE
-##CC##CC##CC##EEEEEE
-CCCCCCCCCCCCCCEEEEEE
-CCCCCCCCCCCCCCEEEEEE
+########################################
+########################################
+##BBBBBBBBDDDDDDDDDDSSSSSSSSSSFFFFFFFF##
+##BBBBBBBBDDDDDDDDDDSSSSSSSSSSFFFFFFFF##
+##BBBBBBBBDDDDDDDDDDSSSSSSSSSSFFFFFFFF##
+##BBBBBBBBDDDDDDDDDDSSSSSSSSSSFFFFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+##BBBBBB####DDDDDD####SSSSSS####FFFFFF##
+BBBBBBBBBBDDDDDDDDDDSSSSSSSSEEEEEEEEEEEE
+BBBBBBBBBBDDDDDDDDDDSSSSSSSSEEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+####CCCC####CCCC####CCCC####EEEEEEEEEEEE
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
 """.strip()
 
 TILES = cv2.imread("tiles.png")
@@ -51,7 +61,7 @@ class Supermarket:
         self.ncols = len(self.contents[0])
         self.nrows = len(self.contents)
         self.image = np.zeros(
-            (self.nrows * TILE_SIZE, self.ncols * TILE_SIZE, 3), dtype=np.uint8
+            (self.nrows * TILE_SIZE, self.ncols * TILE_SIZE, 4), dtype=np.uint8
         )
         self.prepare_map()
         self.customers = []
@@ -123,6 +133,9 @@ class Supermarket:
                 # Get tile for current position
                 bm = self.get_tile(char)
 
+                # Add alpha channel
+                rgba = cv2.cvtColor(bm, cv2.COLOR_RGB2RGBA)
+
                 # Calculate window size and position to insert tile
                 row1 = row * TILE_SIZE
                 row2 = row1 + TILE_SIZE
@@ -131,7 +144,7 @@ class Supermarket:
                 col2 = col1 + TILE_SIZE
 
                 # Add tile to image
-                self.image[row1:row2, col1:col2] = bm
+                self.image[row1:row2, col1:col2] = rgba
 
     def draw(self, frame):
         """
@@ -200,7 +213,7 @@ class Supermarket:
         """
         Run the script.
         """
-        if steps == None:
+        if steps is None:
             steps = len(self.entry_times)
 
         # Loop through all the lines of entry times
@@ -239,7 +252,7 @@ class Supermarket:
         """
         Animate customer movements in the store.
         """
-        if steps == None:
+        if steps is None:
             steps = len(self.entry_times)
 
         # Create background of the same size as the supermarket
@@ -306,7 +319,7 @@ class Customer:
         supermarket: A SuperMarketMap object
         avatar : a numpy array containing a 32x32 tile image
         """
-        if isinstance(tiles, np.ndarray):
+        if not isinstance(tiles, np.ndarray):
             tiles = supermarket.tiles
 
         self.id = id
@@ -314,7 +327,6 @@ class Customer:
         self.supermarket = supermarket
         self.row, self.col = self.get_rand_position("entrance")
         self.tiles = tiles
-        # self.avatar = self.extract_tile(7, 0)
         self.section = section
         self.avatar = self.generate_avatar()
 
@@ -325,7 +337,7 @@ class Customer:
         """
         Randomly select a position in a given section.
         """
-        if section == None:
+        if section is None:
             section = self.section
 
         # Get all possible positions in the section
@@ -346,7 +358,7 @@ class Customer:
         col1 = self.col * TILE_SIZE
         col2 = col1 + self.avatar.shape[1]
 
-        frame[row1:row2, col1:col2] = self.avatar[:, :, :3]
+        frame[row1:row2, col1:col2] = self.avatar
 
     def extract_tile(self, row, col):
         """
@@ -380,7 +392,7 @@ class Customer:
 
         image_bytes = avatar.render_png()
         image_array = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-        image_array = cv2.resize(image_array, (32, 32))
+        image_array = cv2.resize(image_array, (TILE_SIZE, TILE_SIZE))
 
         return image_array
 
