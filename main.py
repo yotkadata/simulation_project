@@ -51,27 +51,22 @@ class Supermarket:
 
     def __init__(self, name, floor=FLOOR, tiles=TILES):
         """
-        floor: a string with each character representing a tile
-        tiles: a numpy array containing all the tile images
+        name: str containing the name of the supermarket
+        floor: str with each character representing a tile
+        tiles: numpy array containing all the tile images
         """
         self.name = name
         self.tiles = tiles
         # Split the floor string into a two dimensional matrix
         self.contents = [list(row) for row in floor.split("\n")]
-        self.ncols = len(self.contents[0])
-        self.nrows = len(self.contents)
-        self.image = np.zeros(
-            (self.nrows * TILE_SIZE, self.ncols * TILE_SIZE, 4), dtype=np.uint8
-        )
+        self.image = self.prepare_image()
         self.prepare_map()
         self.customers = []
         self.tprobs = self.load_tprobs()
         self.entry_times = self.load_entry_times()
         self.last_id = 0
         self.current_time = self.entry_times.loc[0, "timestamp"]
-        self.register = pd.DataFrame(
-            columns=["timestamp", "customer_no", "name", "location"]
-        )
+        self.register = None
 
     def extract_tile(self, row, col):
         """
@@ -105,6 +100,16 @@ class Supermarket:
             return self.extract_tile(1, 1)
         else:
             return self.extract_tile(1, 2)
+
+    def prepare_image(self):
+        """
+        Prepare the image to be filled later.
+        """
+        image = np.zeros(
+            (len(self.contents) * TILE_SIZE, len(self.contents[0]) * TILE_SIZE, 4),
+            dtype=np.uint8,
+        )
+        return image
 
     def prepare_map(self):
         """
@@ -156,7 +161,7 @@ class Supermarket:
         """
         Draw all customers in their current position.
         """
-        for c in customers:
+        for _ in customers:
             frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
 
     def load_tprobs(self):
@@ -203,11 +208,16 @@ class Supermarket:
         self.customers.remove(customer)
         print(f"{customer.name} (ID: {customer.id}) has left the store.")
 
-    def register_action(self, timestamp, id, name, section):
+    def register_action(self, timestamp, customer_id, name, section):
         """
         Register an action for the CSV output at the end.
         """
-        self.register.loc[len(self.register)] = [timestamp, id, name, section]
+        if not isinstance(self.register, pd.DataFrame):
+            self.register = pd.DataFrame(
+                columns=["timestamp", "customer_no", "name", "location"]
+            )
+
+        self.register.loc[len(self.register)] = [timestamp, customer_id, name, section]
 
     def simulate(self, steps=None):
         """
