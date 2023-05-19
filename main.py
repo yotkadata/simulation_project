@@ -1,3 +1,8 @@
+"""
+Simulation of clients moving in a supermarket.
+Based on Markov Chains
+"""
+
 import time
 
 import cv2
@@ -137,10 +142,10 @@ class Supermarket:
                 self.positions[mapping[char]].append((row, col))
 
                 # Get tile for current position
-                bm = self.get_tile(char)
+                current_tile = self.get_tile(char)
 
                 # Add alpha channel
-                rgba = cv2.cvtColor(bm, cv2.COLOR_RGB2RGBA)
+                rgba = cv2.cvtColor(current_tile, cv2.COLOR_RGB2RGBA)
 
                 # Calculate window size and position to insert tile
                 row1 = row * TILE_SIZE
@@ -172,7 +177,7 @@ class Supermarket:
 
     def add_new_customer(self, new_customer):
         """
-        Add one customer.
+        Add one customer to the list of customers currently in the store.
         """
         assert isinstance(new_customer, Customer)
         self.customers.append(new_customer)
@@ -186,7 +191,7 @@ class Supermarket:
 
     def add_new_customers(self, num_customers):
         """
-        Add multiple new customers.
+        Create multiple new customer objects and add them to list of customers in the market.
         """
         for _ in range(num_customers):
             f = Faker()
