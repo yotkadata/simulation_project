@@ -155,14 +155,14 @@ class Supermarket:
         """
         return [list(row) for row in floor.split("\n")]
 
-    def extract_tile(self, row, col):
+    def extract_tile(self, position):
         """
         Extract a tile array from the tiles image.
         """
-        row1 = row * TILE_SIZE
+        row1 = position[0] * TILE_SIZE
         row2 = row1 + TILE_SIZE
 
-        col1 = col * TILE_SIZE
+        col1 = position[1] * TILE_SIZE
         col2 = col1 + TILE_SIZE
 
         return self.tiles[row1:row2, col1:col2]
@@ -186,9 +186,7 @@ class Supermarket:
         if character not in tile_position:
             character = "others"
 
-        return self.extract_tile(
-            tile_position[character][0], tile_position[character][1]
-        )
+        return self.extract_tile(tile_position[character])
 
     def draw(self, frame):
         """
