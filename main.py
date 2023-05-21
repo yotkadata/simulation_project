@@ -51,7 +51,7 @@ TILES = cv2.imread("tiles.png")
 
 class Supermarket:
     """
-    Visualizes the supermarket background.
+    Simulates and visualizes the movement of clients in a supermarket.
     """
 
     def __init__(self, name, floor=FLOOR, tiles=TILES):
@@ -63,6 +63,7 @@ class Supermarket:
         self.name = name
         self.tiles = tiles
         self.floor_matrix = self.split_floor(floor)
+        self.image = self.prepare_image()
         self.customers = []
         self.last_id = 0
         self.current_time = self.entry_times.loc[0, "timestamp"]
@@ -111,8 +112,7 @@ class Supermarket:
 
         return positions
 
-    @property
-    def image(self):
+    def prepare_image(self):
         """
         Prepare the entire image as a big numpy array.
         """
@@ -144,8 +144,6 @@ class Supermarket:
 
                 # Add tile to image
                 image[row1:row2, col1:col2] = rgba
-
-                # self.write_image(f"supermarket-{row}-{col}.png")
 
         return image
 
@@ -270,12 +268,6 @@ class Supermarket:
         self.register.to_csv(csv_path)
         print(f"Results saved to {csv_path}.")
 
-    def write_image(self, filename):
-        """
-        Writes the image into a file.
-        """
-        cv2.imwrite(filename, self.image)
-
     def animate(self, steps=None):
         """
         Animate customer movements in the store.
@@ -324,19 +316,19 @@ class Supermarket:
 
             i += 1
 
-            if i == len(self.entry_times):
+            if i == steps:
                 break
 
             if key == 113:  # 'q' key
                 break
 
-            time.sleep(1)
+            time.sleep(0.5)
 
             cv2.imshow("frame", frame)
 
         cv2.destroyAllWindows()
 
-        self.write_image("supermarket.png")
+        cv2.imwrite("supermarket.png", self.image)
 
 
 class Customer:
