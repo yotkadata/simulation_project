@@ -62,17 +62,98 @@ class Supermarket:
         """
         self.name = name
         self.tiles = tiles
-        # Split the floor string into a two dimensional matrix
-        self.contents = [list(row) for row in floor.split("\n")]
-        self.image = self.prepare_image()
-        self.prepare_map()
+        self.floor_matrix = self.split_floor(floor)
         self.customers = []
-        self.tprobs = self.load_tprobs()
-        self.entry_times = self.load_entry_times()
         self.last_id = 0
         self.current_time = self.entry_times.loc[0, "timestamp"]
         self.register = None
         self.positions_taken = []
+
+    @property
+    def tprobs(self):
+        """
+        Load transition probabilities from a CSV file.
+        """
+        return pd.read_csv("data/transition_probabilities.csv", index_col=[0])
+
+    @property
+    def entry_times(self):
+        """
+        Load entry times from a CSV file.
+        """
+        return pd.read_csv("data/entry_times.csv", index_col=[0])
+
+    @property
+    def positions(self):
+        """
+        Calculate all possible positions by section.
+        """
+
+        # Get all unique characters in floor plan
+        chars = "".join(set(FLOOR)).replace("\n", "")
+
+        mapping = {
+            "E": "entrance",
+            "F": "fruit",
+            "D": "dairy",
+            "S": "spices",
+            "B": "drinks",
+            "C": "checkout",
+            "#": "wall",
+        }
+        # Create empty dict to store possible positions
+        positions = {mapping[key]: [] for key in chars}
+
+        for row, line in enumerate(self.floor_matrix):
+            for col, char in enumerate(line):
+                # Save all possible positions of letters in a dict
+                positions[mapping[char]].append((row, col))
+
+        return positions
+
+    @property
+    def image(self):
+        """
+        Prepare the entire image as a big numpy array.
+        """
+
+        # Create an empty array of the image size to be filled later
+        image = np.zeros(
+            (
+                len(self.floor_matrix) * TILE_SIZE,
+                len(self.floor_matrix[0]) * TILE_SIZE,
+                4,
+            ),
+            dtype=np.uint8,
+        )
+
+        for row, line in enumerate(self.floor_matrix):
+            for col, char in enumerate(line):
+                # Get tile for current position
+                current_tile = self.get_tile(char)
+
+                # Add alpha channel
+                rgba = cv2.cvtColor(current_tile, cv2.COLOR_RGB2RGBA)
+
+                # Calculate window size and position to insert tile
+                row1 = row * TILE_SIZE
+                row2 = row1 + TILE_SIZE
+
+                col1 = col * TILE_SIZE
+                col2 = col1 + TILE_SIZE
+
+                # Add tile to image
+                image[row1:row2, col1:col2] = rgba
+
+                # self.write_image(f"supermarket-{row}-{col}.png")
+
+        return image
+
+    def split_floor(self, floor):
+        """
+        Split the floor string into a two dimensional matrix.
+        """
+        return [list(row) for row in floor.split("\n")]
 
     def extract_tile(self, row, col):
         """
@@ -91,7 +172,7 @@ class Supermarket:
         Return the array for a given tile character.
         """
 
-        tile_pos = {
+        tile_position = {
             "#": (0, 0),
             "E": (0, 1),
             "F": (0, 2),
@@ -102,78 +183,18 @@ class Supermarket:
             "others": (1, 2),
         }
 
-        if character not in tile_pos:
+        if character not in tile_position:
             character = "others"
 
-        return self.extract_tile(tile_pos[character][0], tile_pos[character][1])
-
-    def prepare_image(self):
-        """
-        Prepare the image to be filled later.
-        """
-        image = np.zeros(
-            (len(self.contents) * TILE_SIZE, len(self.contents[0]) * TILE_SIZE, 4),
-            dtype=np.uint8,
+        return self.extract_tile(
+            tile_position[character][0], tile_position[character][1]
         )
-        return image
-
-    def prepare_map(self):
-        """
-        Prepare the entire image as a big numpy array.
-        """
-        # Get all unique characters in floor plan
-        chars = "".join(set(FLOOR)).replace("\n", "")
-
-        mapping = {
-            "E": "entrance",
-            "F": "fruit",
-            "D": "dairy",
-            "S": "spices",
-            "B": "drinks",
-            "C": "checkout",
-            "#": "wall",
-        }
-        # Create empty dict to store possible positions
-        self.positions = {mapping[key]: [] for key in chars}
-
-        for row, line in enumerate(self.contents):
-            for col, char in enumerate(line):
-                # Save all possible positions of letters in a dict
-                self.positions[mapping[char]].append((row, col))
-
-                # Get tile for current position
-                current_tile = self.get_tile(char)
-
-                # Add alpha channel
-                rgba = cv2.cvtColor(current_tile, cv2.COLOR_RGB2RGBA)
-
-                # Calculate window size and position to insert tile
-                row1 = row * TILE_SIZE
-                row2 = row1 + TILE_SIZE
-
-                col1 = col * TILE_SIZE
-                col2 = col1 + TILE_SIZE
-
-                # Add tile to image
-                self.image[row1:row2, col1:col2] = rgba
 
     def draw(self, frame):
         """
         Draw the image into a frame.
         """
         frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
-
-    def load_tprobs(self):
-        """
-        Load transition probabilities from a CSV file.
-        """
-        return pd.read_csv("data/transition_probabilities.csv", index_col=[0])
-
-    def load_entry_times(self):
-        """
-        Load entry times from a CSV file.
-        """
-        return pd.read_csv("data/entry_times.csv", index_col=[0])
 
     def add_new_customer(self, new_customer):
         """
@@ -184,10 +205,10 @@ class Supermarket:
 
         # Register customer action
         self.register_action(
-            self.current_time, new_customer.id, new_customer.name, new_customer.section
+            self.current_time, new_customer.cid, new_customer.name, new_customer.section
         )
 
-        print(f"{new_customer.name} (ID: {new_customer.id}) entered the supermarket.")
+        print(f"{new_customer.name} (ID: {new_customer.cid}) entered the supermarket.")
 
     def add_new_customers(self, num_customers):
         """
@@ -196,7 +217,7 @@ class Supermarket:
         for _ in range(num_customers):
             f = Faker()
             self.last_id += 1
-            new_customer = Customer(self.last_id, f.name(), self, self.tiles)
+            new_customer = Customer(self.last_id, f.name(), self)
             self.add_new_customer(new_customer)
 
     def remove_customer(self, customer):
@@ -205,7 +226,7 @@ class Supermarket:
         """
         assert isinstance(customer, Customer)
         self.customers.remove(customer)
-        print(f"{customer.name} (ID: {customer.id}) has left the store.")
+        print(f"{customer.name} (ID: {customer.cid}) has left the store.")
 
     def register_action(self, timestamp, customer_id, name, section):
         """
@@ -233,7 +254,7 @@ class Supermarket:
             for c in self.customers:
                 # Move customers currently in the store to next section
                 c.next_section(self.tprobs)
-                self.register_action(self.current_time, c.id, c.name, c.section)
+                self.register_action(self.current_time, c.cid, c.name, c.section)
 
                 # Remove customers that reached checkout
                 if not c.is_active():
@@ -326,21 +347,16 @@ class Customer:
     in a MCMC simulation.
     """
 
-    def __init__(self, id, name, supermarket, tiles=None, section="entrance"):
+    def __init__(self, cid, name, supermarket, section="entrance"):
         """
         supermarket: A SuperMarketMap object
         avatar : a numpy array containing a 32x32 tile image
         """
-        if not isinstance(tiles, np.ndarray):
-            tiles = supermarket.tiles
-
-        self.id = id
+        self.cid = cid
         self.name = name
         self.supermarket = supermarket
-        self.row, self.col = self.get_rand_position("entrance")
-        self.tiles = tiles
+        self.position = self.get_rand_position("entrance")
         self.section = section
-        self.avatar = self.generate_avatar()
 
     def __repr__(self) -> str:
         return f"<Customer {self.name}, currently in section '{self.section}'>"
@@ -368,27 +384,16 @@ class Customer:
         """
         Add the customer image to the frame.
         """
-        row1 = self.row * TILE_SIZE
+        row1 = self.position[0] * TILE_SIZE
         row2 = row1 + self.avatar.shape[0]
 
-        col1 = self.col * TILE_SIZE
+        col1 = self.position[1] * TILE_SIZE
         col2 = col1 + self.avatar.shape[1]
 
         frame[row1:row2, col1:col2] = self.avatar
 
-    def extract_tile(self, row, col):
-        """
-        Extract a tile array from the tiles image.
-        """
-        row1 = row * TILE_SIZE
-        row2 = row1 + TILE_SIZE
-
-        col1 = col * TILE_SIZE
-        col2 = col1 + TILE_SIZE
-
-        return self.tiles[row1:row2, col1:col2]
-
-    def generate_avatar(self):
+    @property
+    def avatar(self):
         """
         Generate a random avatar.
         """
@@ -427,13 +432,13 @@ class Customer:
 
         self.section = np.random.choice(tprobs.columns, p=tprobs.loc[self.section])
 
-        self.row, self.col = self.get_rand_position()
+        self.position = self.get_rand_position()
 
         if current == self.section:
-            print(f"{self.name} (ID: {self.id}) stayed in {current}.")
+            print(f"{self.name} (ID: {self.cid}) stayed in {current}.")
         else:
             print(
-                f"{self.name} (ID: {self.id}) moved from {current} to {self.section}."
+                f"{self.name} (ID: {self.cid}) moved from {current} to {self.section}."
             )
 
     def is_active(self):
