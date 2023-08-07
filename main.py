@@ -46,6 +46,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
 """.strip()
 
+# Convert floor string to numpy array
 TILES = cv2.imread("img/tiles.png")
 
 
@@ -54,7 +55,9 @@ class Supermarket:
     Simulates and visualizes the movement of clients in a supermarket.
     """
 
-    def __init__(self, name, floor=FLOOR, tiles=TILES):
+    def __init__(
+        self, name: str, floor: str = FLOOR, tiles: np.ndarray = TILES
+    ) -> None:
         """
         name: str containing the name of the supermarket
         floor: str with each character representing a tile
@@ -71,21 +74,21 @@ class Supermarket:
         self.positions_taken = []
 
     @property
-    def tprobs(self):
+    def tprobs(self) -> pd.DataFrame:
         """
         Load transition probabilities from a CSV file.
         """
         return pd.read_csv("data/transition_probabilities.csv", index_col=[0])
 
     @property
-    def entry_times(self):
+    def entry_times(self) -> pd.DataFrame:
         """
         Load entry times from a CSV file.
         """
         return pd.read_csv("data/entry_times.csv", index_col=[0])
 
     @property
-    def positions(self):
+    def positions(self) -> dict:
         """
         Calculate all possible positions by section.
         """
@@ -112,7 +115,7 @@ class Supermarket:
 
         return positions
 
-    def prepare_image(self):
+    def prepare_image(self) -> np.ndarray:
         """
         Prepare the entire image as a big numpy array.
         """
@@ -147,13 +150,13 @@ class Supermarket:
 
         return image
 
-    def split_floor(self, floor):
+    def split_floor(self, floor: str) -> list:
         """
         Split the floor string into a two dimensional matrix.
         """
         return [list(row) for row in floor.split("\n")]
 
-    def extract_tile(self, position):
+    def extract_tile(self, position: tuple) -> np.ndarray:
         """
         Extract a tile array from the tiles image.
         """
@@ -165,7 +168,7 @@ class Supermarket:
 
         return self.tiles[row1:row2, col1:col2]
 
-    def get_tile(self, character):
+    def get_tile(self, character: str) -> np.ndarray:
         """
         Return the array for a given tile character.
         """
@@ -186,13 +189,13 @@ class Supermarket:
 
         return self.extract_tile(tile_position[character])
 
-    def draw(self, frame):
+    def draw(self, frame: np.ndarray) -> None:
         """
         Draw the image into a frame.
         """
         frame[0 : self.image.shape[0], 0 : self.image.shape[1]] = self.image
 
-    def add_new_customer(self, new_customer):
+    def add_new_customer(self, new_customer: "Customer") -> None:
         """
         Add one customer to the list of customers currently in the store.
         """
@@ -206,7 +209,7 @@ class Supermarket:
 
         print(f"{new_customer.name} (ID: {new_customer.cid}) entered the supermarket.")
 
-    def add_new_customers(self, num_customers):
+    def add_new_customers(self, num_customers: int) -> None:
         """
         Create multiple new customer objects and add them to list of customers in the market.
         """
@@ -216,7 +219,7 @@ class Supermarket:
             new_customer = Customer(self.last_id, faker.name(), self)
             self.add_new_customer(new_customer)
 
-    def remove_customer(self, customer):
+    def remove_customer(self, customer: "Customer") -> None:
         """
         Remove customer from store.
         """
@@ -224,7 +227,9 @@ class Supermarket:
         self.customers.remove(customer)
         print(f"{customer.name} (ID: {customer.cid}) has left the store.")
 
-    def register_action(self, timestamp, customer_id, name, section):
+    def register_action(
+        self, timestamp: str, customer_id: int, name: str, section: str
+    ) -> None:
         """
         Register an action for the CSV output at the end.
         """
@@ -235,7 +240,7 @@ class Supermarket:
 
         self.register.loc[len(self.register)] = [timestamp, customer_id, name, section]
 
-    def simulate(self, steps=None):
+    def simulate(self, steps: int = None) -> None:
         """
         Run the script.
         """
@@ -270,7 +275,7 @@ class Supermarket:
         self.register.to_csv(csv_path)
         print(f"Results saved to {csv_path}.")
 
-    def animate(self, steps=None):
+    def animate(self, steps: int = None) -> None:
         """
         Animate customer movements in the store.
         """
@@ -339,7 +344,9 @@ class Customer:
     in a MCMC simulation.
     """
 
-    def __init__(self, cid, name, supermarket, section="entrance"):
+    def __init__(
+        self, cid: int, name: str, supermarket=str, section: str = "entrance"
+    ) -> None:
         """
         supermarket: A SuperMarketMap object
         avatar : a numpy array containing a 32x32 tile image
@@ -353,7 +360,7 @@ class Customer:
     def __repr__(self) -> str:
         return f"<Customer {self.name}, currently in section '{self.section}'>"
 
-    def get_rand_position(self, section=None):
+    def get_rand_position(self, section: str = None) -> tuple[int, int]:
         """
         Randomly select a position in a given section.
         """
@@ -372,7 +379,7 @@ class Customer:
                 self.supermarket.positions_taken.append(choices[i])
                 return choices[i]
 
-    def draw(self, frame):
+    def draw(self, frame: np.ndarray) -> None:
         """
         Add the customer image to the frame.
         """
@@ -385,7 +392,7 @@ class Customer:
         frame[row1:row2, col1:col2] = self.avatar
 
     @property
-    def avatar(self):
+    def avatar(self) -> np.ndarray:
         """
         Generate a random avatar.
         """
@@ -412,7 +419,7 @@ class Customer:
 
         return image_array
 
-    def next_section(self, tprobs=None):
+    def next_section(self, tprobs: pd.DataFrame = None) -> None:
         """
         Propagates the customer to the next state.
         Returns nothing.
@@ -433,7 +440,7 @@ class Customer:
                 f"{self.name} (ID: {self.cid}) moved from {current} to {self.section}."
             )
 
-    def is_active(self):
+    def is_active(self) -> bool:
         """
         Returns True if the customer has not reached the checkout yet.
         """
