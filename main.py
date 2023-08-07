@@ -46,7 +46,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCEEEEEEEEEEEE
 """.strip()
 
-TILES = cv2.imread("tiles.png")
+TILES = cv2.imread("img/tiles.png")
 
 
 class Supermarket:
@@ -211,9 +211,9 @@ class Supermarket:
         Create multiple new customer objects and add them to list of customers in the market.
         """
         for _ in range(num_customers):
-            f = Faker()
+            faker = Faker()
             self.last_id += 1
-            new_customer = Customer(self.last_id, f.name(), self)
+            new_customer = Customer(self.last_id, faker.name(), self)
             self.add_new_customer(new_customer)
 
     def remove_customer(self, customer):
@@ -247,14 +247,16 @@ class Supermarket:
             print(self.entry_times.loc[i, "timestamp"])
             self.current_time = self.entry_times.loc[i, "timestamp"]
 
-            for c in self.customers:
+            for customer in self.customers:
                 # Move customers currently in the store to next section
-                c.next_section(self.tprobs)
-                self.register_action(self.current_time, c.cid, c.name, c.section)
+                customer.next_section(self.tprobs)
+                self.register_action(
+                    self.current_time, customer.cid, customer.name, customer.section
+                )
 
                 # Remove customers that reached checkout
-                if not c.is_active():
-                    self.remove_customer(c)
+                if not customer.is_active():
+                    self.remove_customer(customer)
 
             # Add new customers entering the store
             self.add_new_customers(self.entry_times.loc[i, "new_customers"])
@@ -292,20 +294,20 @@ class Supermarket:
 
             self.current_time = self.entry_times.loc[i, "timestamp"]
 
-            for c in self.customers:
+            for customer in self.customers:
                 # Move customers currently in the store to next section
-                c.next_section()
+                customer.next_section()
 
             # Add new customers entering the store
             self.add_new_customers(self.entry_times.loc[i, "new_customers"])
 
-            for c in self.customers:
+            for customer in self.customers:
                 # Draw the customer
-                c.draw(frame)
+                customer.draw(frame)
 
                 # Remove customers that reached checkout
-                if not c.is_active():
-                    self.remove_customer(c)
+                if not customer.is_active():
+                    self.remove_customer(customer)
 
             # Reset taken positions
             self.positions_taken = []
