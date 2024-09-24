@@ -1,7 +1,7 @@
 Faker==19.2.0
 matplotlib==3.7.2
 numpy==1.25.2
-opencv_python==4.8.0.74
+opencv_python==4.8.1.78
 pandas==2.0.3
 plotly==5.15.0
 py_avataaars==1.1.2
